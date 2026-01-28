@@ -1,14 +1,42 @@
 <!DOCTYPE html>
-<html lang="">
-  <head>
+<html lang="zh-CN">
+<head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vite App</title>
-    <script type="module" crossorigin src="/assets/index-Sv2aFZ4L.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CYUYQ_c2.css">
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
+    <title>Transaction System</title>
+    <script src="https://unpkg.com/vue@3.5.26/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus@2.13.1/dist/index.full.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus@2.13.1/dist/index.css">
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #app { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Transaction System Loading...</h1>
+    </div>
+    <script>
+        const { createApp } = Vue;
+        const app = createApp({
+            template: `<div style="text-align:center;padding:20px;">
+                <el-card shadow="hover" style="max-width:600px;margin:0 auto;">
+                    <template #header>
+                        <div class="card-header">
+                            <span>交易管理系统</span>
+                        </div>
+                    </template>
+                    <div>系统正在初始化...</div>
+                    <template #footer>
+                        <div style="text-align: center;">
+                            <el-button type="primary">进入系统</el-button>
+                        </div>
+                    </template>
+                </el-card>
+            </div>`
+        });
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
 </html>
