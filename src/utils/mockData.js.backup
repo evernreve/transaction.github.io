@@ -1,0 +1,419 @@
+// 模拟数据存储
+let businessOrders = [];
+let transactionOrders = [];
+let refundOrders = []; // 新增退款单数据
+
+// 初始化业务单模拟数据
+const initBusinessOrders = () => {
+  const statuses = ['pending', 'processed', 'completed', 'cancelled', 'unknown', 'failed'];
+  const operators = ['张三', '李四', '王五', '赵六', '钱七'];
+  const channels = ['支付宝', '微信支付', '银联', '云闪付', '京东支付'];
+  const tenants = ['租户A', '租户B', '租户C', '租户D'];
+  const agents = ['代理商1', '代理商2', '代理商3', '代理商4'];
+  const merchants = ['商户A', '商户B', '商户C', '商户D', '商户E'];
+  const types = ['支付', '退款', '代扣', '充值', '提现'];
+  const feeMethods = ['实时扣减', '延时扣减', '按月结算', '按笔结算'];
+  const businessLines = ['b2b_collection', 'vcc_collection', 'crypto_recharge', 'fiat_exchange'];
+  const transactionTypes = ['vcc_opening', 'vcc_collection', 'crypto_withdrawal', 'fiat_exchange'];
+  const paymentMethods = ['swift', 'sepa', 'ach', 'paypal', 'stripe'];
+  const payerPayees = ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十'];
+  const orderStatuses = ['pending', 'processed', 'completed', 'cancelled', 'unknown', 'failed'];
+  const reviewStatuses = ['pending', 'approved', 'rejected', 'processing'];
+  
+  for (let i = 1; i <= 30; i++) {
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const originalAmount = parseFloat((Math.random() * 1000).toFixed(2));
+    const actualPaidAmount = parseFloat((originalAmount - Math.random() * 10).toFixed(2));
+    const hasRefund = Math.random() > 0.7; // 30%的概率有关联退款
+    
+    businessOrders.push({
+      id: i,
+      platformOrderNumber: `P${String(i).padStart(10, '0')}`, // 平台订单号
+      merchantOrderNumber: `M${String(i).padStart(10, '0')}`, // 商户订单号
+      businessLine: businessLines[Math.floor(Math.random() * businessLines.length)], // 业务线
+      transactionType: transactionTypes[Math.floor(Math.random() * transactionTypes.length)], // 交易类型
+      paymentMethod: paymentMethods[Math.floor(Math.random() * paymentMethods.length)], // 支付方式
+      payerPayee: payerPayees[Math.floor(Math.random() * payerPayees.length)], // 付款人/收款人
+      originalAmount: originalAmount, // 金额（原币）
+      actualPaidAmount: actualPaidAmount, // 实付金额
+      feeDetails: `渠道费:¥${(Math.random() * 5).toFixed(2)},平台费:¥${(Math.random() * 2).toFixed(2)}`, // 手续费明细
+      exchangeRate: parseFloat((1 + Math.random() * 0.1).toFixed(4)), // 汇率
+      orderStatus: orderStatuses[Math.floor(Math.random() * orderStatuses.length)], // 订单状态
+      reviewStatus: reviewStatuses[Math.floor(Math.random() * reviewStatuses.length)], // 审核状态
+      executedChannel: channels[Math.floor(Math.random() * channels.length)], // 最终执行渠道
+      hasRefund: hasRefund, // 是否关联退款
+      refundOrderNumber: hasRefund ? `R${String(i).padStart(10, '0')}` : null, // 关联退款单号
+      orderNumber: `ORDER${String(i).padStart(6, '0')}`,
+      relatedTransaction: `TXN${String(i).padStart(8, '0')}`,
+      channel: channels[Math.floor(Math.random() * channels.length)],
+      tenant: tenants[Math.floor(Math.random() * tenants.length)],
+      agent: agents[Math.floor(Math.random() * agents.length)],
+      merchant: merchants[Math.floor(Math.random() * merchants.length)],
+      type: types[Math.floor(Math.random() * types.length)],
+      status: status,
+      feeDescription: `费用描述${i} (¥${(Math.random() * 10).toFixed(2)})`,
+      feeDeductionMethod: feeMethods[Math.floor(Math.random() * feeMethods.length)],
+      createTime: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 19).replace('T', ' '),
+      updateTime: new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 19).replace('T', ' '),
+      operator: operators[Math.floor(Math.random() * operators.length)],
+      remark: `这是第 ${i} 条业务单的备注信息`
+    });
+  }
+};
+
+// 初始化交易单模拟数据
+const initTransactionOrders = () => {
+  const paymentStatuses = ['unpaid', 'paid', 'failed', 'refunding', 'refunded'];
+  const users = ['用户A', '用户B', '用户C', '用户D', '用户E', '用户F'];
+  const merchants = ['商户A', '商户B', '商户C', '商户D', '商户E'];
+  const transactionTypes = ['payment', 'refund', 'collection', 'payment_out', 'exchange', 'conversion', 'crypto_recharge', 'crypto_withdrawal', 'fiat_recharge', 'fiat_withdrawal', 'wallet_transaction'];
+  const tenants = ['租户A', '租户B', '租户C', '租户D'];
+  const agents = ['代理商1', '代理商2', '代理商3', '代理商4'];
+  const banks = ['中国银行', '工商银行', '建设银行', '招商银行', '交通银行'];
+  const accounts = ['6222 **** **** 1111', '6222 **** **** 2222', '6222 **** **** 3333', '6222 **** **** 4444', '6222 **** **** 5555'];
+  
+  for (let i = 1; i <= 30; i++) {
+    const paymentStatus = paymentStatuses[Math.floor(Math.random() * paymentStatuses.length)];
+    const originalAmount = parseFloat((Math.random() * 10000).toFixed(2));
+    const targetAmount = parseFloat((originalAmount * (0.95 + Math.random() * 0.1)).toFixed(2));
+    const exchangeRate = parseFloat((targetAmount / originalAmount).toFixed(4));
+    const createTime = new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 19).replace('T', ' ');
+    const updateTime = new Date(new Date(createTime).getTime() + Math.random() * 1000 * 60 * 60 * 24).toISOString().slice(0, 19).replace('T', ' ');
+    
+    transactionOrders.push({
+      id: i,
+      orderNumber: `TXN${String(i).padStart(8, '0')}`, // 交易唯一号
+      merchantOrderNumber: `MCHNT${String(i).padStart(10, '0')}`, // 关联的商户订单
+      channelOrderNumber: `CHNL${String(i).padStart(12, '0')}`, // 关联的渠道订单
+      tenant: tenants[Math.floor(Math.random() * tenants.length)], // 租户
+      agent: agents[Math.floor(Math.random() * agents.length)], // 代理商
+      merchant: merchants[Math.floor(Math.random() * merchants.length)], // 商户
+      initiatorId: `INIT${String(i).padStart(8, '0')}`, // 发起方ID
+      initiatorName: users[Math.floor(Math.random() * users.length)], // 发起方名称
+      receiverId: `RECV${String(i).padStart(8, '0')}`, // 收款方ID
+      receiverName: users[Math.floor(Math.random() * users.length)], // 收款方名称
+      counterpartyBank: banks[Math.floor(Math.random() * banks.length)], // 对手方银行
+      counterpartyAccount: accounts[Math.floor(Math.random() * accounts.length)], // 对手方账号
+      platformMerchantId: `PLFM${String(i).padStart(8, '0')}`, // 平台商户ID
+      transactionType: transactionTypes[Math.floor(Math.random() * transactionTypes.length)], // 交易类型
+      originalCurrency: ['CNY', 'USD', 'EUR', 'GBP', 'JPY'][Math.floor(Math.random() * 5)], // 原币种
+      originalAmount: originalAmount, // 原金额
+      targetCurrency: ['CNY', 'USD', 'EUR', 'GBP', 'JPY'][Math.floor(Math.random() * 5)], // 目标币种
+      targetAmount: targetAmount, // 目标金额
+      exchangeRate: exchangeRate, // 汇率
+      requestTime: createTime, // 请求时间
+      expiryTime: new Date(new Date(createTime).getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '), // 过期时间
+      amount: originalAmount, // 金额
+      currency: 'CNY', // 币种
+      purpose: ['货款', '服务费', '投资款', '还款', '其他'][Math.floor(Math.random() * 5)], // 用途
+      businessScenario: ['电商货款', '服务费', '跨境支付', '退款', '代扣'][Math.floor(Math.random() * 5)], // 业务场景
+      paymentStatus: paymentStatus,
+      user: users[Math.floor(Math.random() * users.length)],
+      createTime: createTime,
+      updateTime: updateTime,
+      remark: `这是第 ${i} 条交易单的备注信息`
+    });
+  }
+};
+
+// 初始化退款单模拟数据
+const initRefundOrders = () => {
+  const reasons = ['商品质量问题', '客户不满意', '发货错误', '重复下单', '价格异议', '服务问题', '其他'];
+  const methods = ['original', 'bank', 'accounting'];
+  const statuses = ['pending', 'processing', 'refunded', 'rejected', 'cancelled'];
+  const reviewStatuses = ['pending', 'approved', 'rejected', 'processing'];
+  const channels = ['alipay', 'wechat', 'unionpay', 'bank'];
+  
+  for (let i = 1; i <= 20; i++) {
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const amount = parseFloat((Math.random() * 1000).toFixed(2));
+    const createTime = new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 15).toISOString().slice(0, 19).replace('T', ' ');
+    const updateTime = new Date(Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 19).replace('T', ' ');
+    const expectedArrivalTime = new Date(new Date(createTime).getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    const actualArrivalTime = status === 'refunded' ? 
+      new Date(new Date(expectedArrivalTime).getTime() + Math.random() * 1000 * 60 * 60 * 6).toISOString().slice(0, 19).replace('T', ' ') : '';
+    
+    refundOrders.push({
+      id: i,
+      refundNumber: `RFND${String(i).padStart(8, '0')}`,
+      relatedOrderNumber: `ORDER${String(i).padStart(6, '0')}`,
+      reason: reasons[Math.floor(Math.random() * reasons.length)],
+      amount: amount,
+      method: methods[Math.floor(Math.random() * methods.length)],
+      status: status,
+      reviewStatus: reviewStatuses[Math.floor(Math.random() * reviewStatuses.length)],
+      expectedArrivalTime: expectedArrivalTime,
+      actualArrivalTime: actualArrivalTime,
+      channel: channels[Math.floor(Math.random() * channels.length)],
+      createTime: createTime,
+      updateTime: updateTime,
+      remark: `这是第 ${i} 条退款单的备注信息`
+    });
+  }
+};
+
+// 初始化数据
+initBusinessOrders();
+initTransactionOrders();
+initRefundOrders(); // 初始化退款单数据
+
+// 退款单 API 模拟
+export const refundOrderAPI = {
+  // 获取退款单列表
+  getList(params = {}) {
+    let result = [...refundOrders];
+    
+    // 模拟搜索
+    if (params.refundNumber) {
+      result = result.filter(item => item.refundNumber.includes(params.refundNumber));
+    }
+    if (params.relatedOrderNumber) {
+      result = result.filter(item => item.relatedOrderNumber.includes(params.relatedOrderNumber));
+    }
+    if (params.reason) {
+      result = result.filter(item => item.reason.includes(params.reason));
+    }
+    if (params.status) {
+      result = result.filter(item => item.status === params.status);
+    }
+    if (params.method) {
+      result = result.filter(item => item.method === params.method);
+    }
+    
+    // 模拟分页
+    const { page = 1, pageSize = 10 } = params;
+    const start = (page - 1) * pageSize;
+    const end = start + parseInt(pageSize);
+    
+    return {
+      data: result.slice(start, end),
+      total: result.length,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize)
+    };
+  },
+  
+  // 获取单个退款单
+  getById(id) {
+    return refundOrders.find(item => item.id === parseInt(id));
+  },
+  
+  // 创建退款单
+  create(data) {
+    const newOrder = {
+      ...data,
+      id: Math.max(...refundOrders.map(o => o.id), 0) + 1,
+      createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      updateTime: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    };
+    refundOrders.push(newOrder);
+    return newOrder;
+  },
+  
+  // 更新退款单
+  update(id, data) {
+    const index = refundOrders.findIndex(item => item.id === parseInt(id));
+    if (index !== -1) {
+      refundOrders[index] = { ...data, id: parseInt(id), updateTime: new Date().toISOString().slice(0, 19).replace('T', ' ') };
+      return refundOrders[index];
+    }
+    return null;
+  },
+  
+  // 删除退款单
+  delete(id) {
+    const index = refundOrders.findIndex(item => item.id === parseInt(id));
+    if (index !== -1) {
+      refundOrders.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+};
+
+// 业务单 API 模拟
+export const businessOrderAPI = {
+  // 获取业务单列表
+  getList(params = {}) {
+    let result = [...businessOrders];
+    
+    // 模拟搜索
+    if (params.orderNumber) {
+      result = result.filter(item => 
+        item.orderNumber.includes(params.orderNumber) || 
+        item.platformOrderNumber.includes(params.orderNumber) ||
+        item.merchantOrderNumber.includes(params.orderNumber)
+      );
+    }
+    if (params.status) {
+      result = result.filter(item => item.status === params.status);
+    }
+    if (params.tenant) {
+      result = result.filter(item => item.tenant.includes(params.tenant));
+    }
+    if (params.agent) {
+      result = result.filter(item => item.agent.includes(params.agent));
+    }
+    if (params.keyword) {
+      result = result.filter(item => 
+        item.orderNumber.includes(params.keyword) || 
+        item.merchant.includes(params.keyword) ||
+        item.platformOrderNumber.includes(params.keyword) ||
+        item.merchantOrderNumber.includes(params.keyword)
+      );
+    }
+    
+    // 模拟排序
+    if (params.sortBy) {
+      const order = params.sortOrder === 'asc' ? 1 : -1;
+      result.sort((a, b) => {
+        if (a[params.sortBy] < b[params.sortBy]) return -1 * order;
+        if (a[params.sortBy] > b[params.sortBy]) return 1 * order;
+        return 0;
+      });
+    }
+    
+    // 模拟分页
+    const { page = 1, pageSize = 10 } = params;
+    const start = (page - 1) * pageSize;
+    const end = start + parseInt(pageSize);
+    
+    return {
+      data: result.slice(start, end),
+      total: result.length,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize)
+    };
+  },
+  
+  // 获取单个业务单
+  getById(id) {
+    return businessOrders.find(item => item.id === parseInt(id));
+  },
+  
+  // 创建业务单
+  create(data) {
+    const newOrder = {
+      ...data,
+      id: Math.max(...businessOrders.map(o => o.id), 0) + 1,
+      createTime: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    };
+    businessOrders.push(newOrder);
+    return newOrder;
+  },
+  
+  // 更新业务单
+  update(id, data) {
+    const index = businessOrders.findIndex(item => item.id === parseInt(id));
+    if (index !== -1) {
+      businessOrders[index] = { ...data, id: parseInt(id) };
+      return businessOrders[index];
+    }
+    return null;
+  },
+  
+  // 删除业务单
+  delete(id) {
+    const index = businessOrders.findIndex(item => item.id === parseInt(id));
+    if (index !== -1) {
+      businessOrders.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+};
+
+// 交易单 API 模拟
+export const transactionOrderAPI = {
+  // 获取交易单列表
+  getList(params = {}) {
+    let result = [...transactionOrders];
+    
+    // 模拟搜索
+    if (params.orderNumber) {
+      result = result.filter(item => item.orderNumber.includes(params.orderNumber));
+    }
+    if (params.paymentStatus) {
+      result = result.filter(item => item.paymentStatus === params.paymentStatus);
+    }
+    if (params.merchant) {
+      result = result.filter(item => item.merchant.includes(params.merchant));
+    }
+    if (params.transactionType) {
+      result = result.filter(item => item.transactionType === params.transactionType);
+    }
+    if (params.keyword) {
+      result = result.filter(item => 
+        item.orderNumber.includes(params.keyword) || 
+        item.merchant.includes(params.keyword)
+      );
+    }
+    
+    // 模拟排序
+    if (params.sortBy) {
+      const order = params.sortOrder === 'asc' ? 1 : -1;
+      result.sort((a, b) => {
+        if (params.sortBy === 'amount') {
+          return (a[params.sortBy] - b[params.sortBy]) * order;
+        } else {
+          if (a[params.sortBy] < b[params.sortBy]) return -1 * order;
+          if (a[params.sortBy] > b[params.sortBy]) return 1 * order;
+          return 0;
+        }
+      });
+    }
+    
+    // 模拟分页
+    const { page = 1, pageSize = 10 } = params;
+    const start = (page - 1) * pageSize;
+    const end = start + parseInt(pageSize);
+    
+    return {
+      data: result.slice(start, end),
+      total: result.length,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize)
+    };
+  },
+  
+  // 获取单个交易单
+  getById(id) {
+    return transactionOrders.find(item => item.id === parseInt(id));
+  },
+  
+  // 创建交易单
+  create(data) {
+    const newOrder = {
+      ...data,
+      id: Math.max(...transactionOrders.map(o => o.id), 0) + 1,
+      createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      updateTime: new Date().toISOString().slice(0, 19).replace('T', ' ')
+    };
+    transactionOrders.push(newOrder);
+    return newOrder;
+  },
+  
+  // 更新交易单
+  update(id, data) {
+    const index = transactionOrders.findIndex(item => item.id === parseInt(id));
+    if (index !== -1) {
+      transactionOrders[index] = { 
+        ...data, 
+        id: parseInt(id),
+        updateTime: new Date().toISOString().slice(0, 19).replace('T', ' ') 
+      };
+      return transactionOrders[index];
+    }
+    return null;
+  },
+  
+  // 删除交易单
+  delete(id) {
+    const index = transactionOrders.findIndex(item => item.id === parseInt(id));
+    if (index !== -1) {
+      transactionOrders.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+};

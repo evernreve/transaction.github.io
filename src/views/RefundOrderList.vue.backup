@@ -1,0 +1,591 @@
+<template>
+  
+  
+  <div class="refund-order-list">
+    <!-- 顶部搜索栏 -->
+    <el-card class="search-card">
+      <el-form :model="searchForm" inline>
+        <el-form-item label="退款单号">
+          <el-input 
+            v-model="searchForm.refundNumber" 
+            placeholder="请输入退款单号" 
+            clearable 
+            style="width: 180px;"
+          />
+        </el-form-item>
+        <el-form-item label="关联业务单号">
+          <el-input 
+            v-model="searchForm.relatedOrderNumber" 
+            placeholder="请输入关联业务单号" 
+            clearable 
+            style="width: 180px;"
+          />
+        </el-form-item>
+        <el-form-item label="退款原因">
+          <el-input 
+            v-model="searchForm.reason" 
+            placeholder="请输入退款原因" 
+            clearable 
+            style="width: 180px;"
+          />
+        </el-form-item>
+        <el-form-item label="退款状态">
+          <el-select v-model="searchForm.status" placeholder="请选择退款状态" clearable style="width: 140px;">
+            <el-option label="待处理" value="pending" />
+            <el-option label="处理中" value="processing" />
+            <el-option label="已退款" value="refunded" />
+            <el-option label="已拒绝" value="rejected" />
+            <el-option label="已取消" value="cancelled" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="退款方式">
+          <el-select v-model="searchForm.method" placeholder="请选择退款方式" clearable style="width: 140px;">
+            <el-option label="原路退回" value="original" />
+            <el-option label="银行转账" value="bank" />
+            <el-option label="记账" value="accounting" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">搜索</el-button>
+          <el-button @click="resetSearch">重置</el-button>
+          <el-button type="success" @click="handleAdd">新增</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <!-- 表格列表 -->
+    <el-card class="table-card">
+      <el-table
+        :data="tableData"
+        stripe
+        style="width: 100%"
+        v-loading="loading"
+      >
+        <el-table-column prop="refundNumber" label="退款单号" width="200" />
+        <el-table-column prop="relatedOrderNumber" label="关联业务单号" width="200">
+          <template #default="{ row }">
+            <el-button 
+              type="text" 
+              @click="goToRelatedOrder(row.relatedOrderNumber)"
+              style="color: #409EFF;"
+            >
+              {{ row.relatedOrderNumber }}
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reason" label="退款原因" width="150" show-overflow-tooltip />
+        <el-table-column prop="amount" label="退款金额" width="120">
+          <template #default="{ row }">
+            ¥{{ row.amount.toFixed(2) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="method" label="退款方式" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getMethodType(row.method)">
+              {{ getMethodText(row.method) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="退款状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)">
+              {{ getStatusText(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reviewStatus" label="审核状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getReviewStatusType(row.reviewStatus)">
+              {{ getReviewStatusText(row.reviewStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="expectedArrivalTime" label="预计到账时间" width="180" />
+        <el-table-column prop="actualArrivalTime" label="实际到账时间" width="180" />
+        <el-table-column prop="channel" label="执行渠道" width="120" />
+        <el-table-column prop="createTime" label="创建时间" width="180" />
+        <el-table-column prop="updateTime" label="最后更新时间" width="180" />
+        <el-table-column fixed="right" label="操作" width="150">
+          <template #default="{ row }">
+            <div class="operation-cell">
+              <el-button size="small" @click="handleViewDetail(row)">查看详情</el-button>
+              <el-button size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+      
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
+    </el-card>
+
+    <!-- 新增/编辑对话框 -->
+    <el-dialog
+      :title="dialogTitle"
+      v-model="dialogVisible"
+      width="600px"
+    >
+      <el-form
+        :model="formModel"
+        :rules="formRules"
+        ref="formRef"
+        label-width="120px"
+      >
+        <el-form-item label="退款单号" prop="refundNumber">
+          <el-input
+            v-model="formModel.refundNumber"
+            :disabled="!!formModel.id"
+            placeholder="请输入退款单号"
+          />
+        </el-form-item>
+        <el-form-item label="关联业务单号" prop="relatedOrderNumber">
+          <el-input v-model="formModel.relatedOrderNumber" placeholder="请输入关联业务单号" />
+        </el-form-item>
+        <el-form-item label="退款原因" prop="reason">
+          <el-input v-model="formModel.reason" type="textarea" :rows="3" placeholder="请输入退款原因" />
+        </el-form-item>
+        <el-form-item label="退款金额" prop="amount">
+          <el-input-number
+            v-model="formModel.amount"
+            :min="0"
+            :precision="2"
+            :step="1"
+            placeholder="请输入退款金额"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="退款方式" prop="method">
+          <el-select v-model="formModel.method" placeholder="请选择退款方式" style="width: 100%;">
+            <el-option label="原路退回" value="original" />
+            <el-option label="银行转账" value="bank" />
+            <el-option label="记账" value="accounting" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="退款状态" prop="status">
+          <el-select v-model="formModel.status" placeholder="请选择退款状态" style="width: 100%;">
+            <el-option label="待处理" value="pending" />
+            <el-option label="处理中" value="processing" />
+            <el-option label="已退款" value="refunded" />
+            <el-option label="已拒绝" value="rejected" />
+            <el-option label="已取消" value="cancelled" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="审核状态" prop="reviewStatus">
+          <el-select v-model="formModel.reviewStatus" placeholder="请选择审核状态" style="width: 100%;">
+            <el-option label="待审核" value="pending" />
+            <el-option label="已批准" value="approved" />
+            <el-option label="已拒绝" value="rejected" />
+            <el-option label="审核中" value="processing" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="预计到账时间" prop="expectedArrivalTime">
+          <el-date-picker
+            v-model="formModel.expectedArrivalTime"
+            type="datetime"
+            placeholder="选择预计到账时间"
+            format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="实际到账时间" prop="actualArrivalTime">
+          <el-date-picker
+            v-model="formModel.actualArrivalTime"
+            type="datetime"
+            placeholder="选择实际到账时间"
+            format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="执行渠道" prop="channel">
+          <el-select v-model="formModel.channel" placeholder="请选择执行渠道" style="width: 100%;">
+            <el-option label="支付宝" value="alipay" />
+            <el-option label="微信支付" value="wechat" />
+            <el-option label="银联" value="unionpay" />
+            <el-option label="银行转账" value="bank" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 详情抽屉 -->
+    <el-drawer
+      v-model="detailDrawerVisible"
+      :title="`退款单详情 - ${currentRow?.refundNumber || ''}`"
+      size="600px"
+    >
+      <div v-if="currentRow" class="detail-content">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="退款单号">{{ currentRow.refundNumber }}</el-descriptions-item>
+          <el-descriptions-item label="关联业务单号">
+            <el-button 
+              type="text" 
+              @click="goToRelatedOrder(currentRow.relatedOrderNumber)"
+              style="color: #409EFF;"
+            >
+              {{ currentRow.relatedOrderNumber }}
+            </el-button>
+          </el-descriptions-item>
+          <el-descriptions-item label="退款原因">{{ currentRow.reason }}</el-descriptions-item>
+          <el-descriptions-item label="退款金额">¥{{ currentRow.amount.toFixed(2) }}</el-descriptions-item>
+          <el-descriptions-item label="退款方式">
+            <el-tag :type="getMethodType(currentRow.method)">
+              {{ getMethodText(currentRow.method) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="退款状态">
+            <el-tag :type="getStatusType(currentRow.status)">
+              {{ getStatusText(currentRow.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="审核状态">
+            <el-tag :type="getReviewStatusType(currentRow.reviewStatus)">
+              {{ getReviewStatusText(currentRow.reviewStatus) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="预计到账时间">{{ currentRow.expectedArrivalTime || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="实际到账时间">{{ currentRow.actualArrivalTime || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="执行渠道">{{ currentRow.channel }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ currentRow.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="最后更新时间">{{ currentRow.updateTime }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+    </el-drawer>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { refundOrderAPI } from '@/utils/mockData.js'
+
+// 搜索表单
+const searchForm = reactive({
+  refundNumber: '',
+  relatedOrderNumber: '',
+  reason: '',
+  status: '',
+  method: ''
+})
+
+// 分页参数
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+
+// 表格数据
+const tableData = ref([])
+const loading = ref(false)
+
+// 对话框相关
+const dialogVisible = ref(false)
+const dialogTitle = ref('')
+const formRef = ref()
+const formModel = ref({
+  id: null,
+  refundNumber: '',
+  relatedOrderNumber: '',
+  reason: '',
+  amount: 0,
+  method: '',
+  status: '',
+  reviewStatus: '',
+  expectedArrivalTime: '',
+  actualArrivalTime: '',
+  channel: '',
+  createTime: '',
+  updateTime: ''
+})
+
+// 详情抽屉
+const detailDrawerVisible = ref(false)
+const currentRow = ref(null)
+
+// 表单验证规则
+const formRules = {
+  refundNumber: [
+    { required: true, message: '请输入退款单号', trigger: 'blur' },
+    { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
+  ],
+  relatedOrderNumber: [
+    { required: true, message: '请输入关联业务单号', trigger: 'blur' }
+  ],
+  reason: [
+    { required: true, message: '请输入退款原因', trigger: 'blur' }
+  ],
+  amount: [
+    { required: true, message: '请输入退款金额', trigger: 'blur' },
+    { type: 'number', min: 0, message: '金额必须大于等于0', trigger: 'blur' }
+  ],
+  method: [
+    { required: true, message: '请选择退款方式', trigger: 'change' }
+  ],
+  status: [
+    { required: true, message: '请选择退款状态', trigger: 'change' }
+  ],
+  reviewStatus: [
+    { required: true, message: '请选择审核状态', trigger: 'change' }
+  ],
+  channel: [
+    { required: true, message: '请选择执行渠道', trigger: 'change' }
+  ]
+}
+
+// 获取数据
+const fetchData = async () => {
+  loading.value = true
+  
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      refundNumber: searchForm.refundNumber || undefined,
+      relatedOrderNumber: searchForm.relatedOrderNumber || undefined,
+      reason: searchForm.reason || undefined,
+      status: searchForm.status || undefined,
+      method: searchForm.method || undefined
+    }
+    
+    const result = await refundOrderAPI.getList(params)
+    tableData.value = result.data
+    total.value = result.total
+  } catch (error) {
+    console.error('获取数据失败:', error)
+    ElMessage.error('获取数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 状态文本映射
+const getStatusText = (status) => {
+  const map = {
+    pending: '待处理',
+    processing: '处理中',
+    refunded: '已退款',
+    rejected: '已拒绝',
+    cancelled: '已取消'
+  }
+  return map[status] || status
+}
+
+// 状态标签类型映射
+const getStatusType = (status) => {
+  const map = {
+    pending: 'info',
+    processing: 'warning',
+    refunded: 'success',
+    rejected: 'danger',
+    cancelled: 'info'
+  }
+  return map[status] || 'info'
+}
+
+// 审核状态文本映射
+const getReviewStatusText = (status) => {
+  const map = {
+    pending: '待审核',
+    approved: '已批准',
+    rejected: '已拒绝',
+    processing: '审核中'
+  }
+  return map[status] || status
+}
+
+// 审核状态标签类型映射
+const getReviewStatusType = (status) => {
+  const map = {
+    pending: 'info',
+    approved: 'success',
+    rejected: 'danger',
+    processing: 'warning'
+  }
+  return map[status] || 'info'
+}
+
+// 退款方式文本映射
+const getMethodText = (method) => {
+  const map = {
+    original: '原路退回',
+    bank: '银行转账',
+    accounting: '记账'
+  }
+  return map[method] || method
+}
+
+// 退款方式标签类型映射
+const getMethodType = (method) => {
+  const map = {
+    original: 'info',
+    bank: 'primary',
+    accounting: 'danger'
+  }
+  return map[method] || 'info'
+}
+
+// 搜索处理
+const handleSearch = () => {
+  currentPage.value = 1
+  fetchData()
+}
+
+// 重置搜索
+const resetSearch = () => {
+  searchForm.refundNumber = ''
+  searchForm.relatedOrderNumber = ''
+  searchForm.reason = ''
+  searchForm.status = ''
+  searchForm.method = ''
+  currentPage.value = 1
+  fetchData()
+}
+
+// 添加
+const handleAdd = () => {
+  dialogTitle.value = '新增退款单'
+  formModel.value = {
+    id: null,
+    refundNumber: `RFND${Date.now()}`,
+    relatedOrderNumber: '',
+    reason: '',
+    amount: 0,
+    method: '',
+    status: 'pending',
+    reviewStatus: 'pending',
+    expectedArrivalTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
+    actualArrivalTime: '',
+    channel: '',
+    createTime: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    updateTime: new Date().toISOString().slice(0, 19).replace('T', ' ')
+  }
+  dialogVisible.value = true
+}
+
+// 编辑
+const handleEdit = (row) => {
+  dialogTitle.value = '编辑退款单'
+  formModel.value = { ...row }
+  dialogVisible.value = true
+}
+
+// 查看详情
+const handleViewDetail = (row) => {
+  currentRow.value = { ...row }
+  detailDrawerVisible.value = true
+}
+
+// 删除
+const handleDelete = (row) => {
+  ElMessageBox.confirm(`确认删除退款单号为 "${row.refundNumber}" 的退款单吗？`, '确认删除', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const success = await refundOrderAPI.delete(row.id)
+      if (success) {
+        ElMessage.success('删除成功')
+        fetchData() // 重新获取数据
+      } else {
+        ElMessage.error('删除失败')
+      }
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败')
+    }
+  }).catch(() => {
+    // 取消删除
+  })
+}
+
+// 提交表单
+const handleSubmit = async () => {
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        if (formModel.value.id) {
+          // 更新操作
+          await refundOrderAPI.update(formModel.value.id, formModel.value)
+          ElMessage.success('更新成功')
+        } else {
+          // 新增操作
+          await refundOrderAPI.create(formModel.value)
+          ElMessage.success('新增成功')
+        }
+        dialogVisible.value = false
+        fetchData() // 重新获取数据
+      } catch (error) {
+        console.error('提交失败:', error)
+        ElMessage.error('提交失败')
+      }
+    }
+  })
+}
+
+// 分页大小变化
+const handleSizeChange = (size) => {
+  pageSize.value = size
+  currentPage.value = 1
+  fetchData()
+}
+
+// 当前页变化
+const handleCurrentChange = (page) => {
+  currentPage.value = page
+  fetchData()
+}
+
+// 跳转到关联业务单详情
+const goToRelatedOrder = (orderNumber) => {
+  // 这里应该跳转到业务单详情页，暂时只显示消息
+  ElMessage.info(`跳转到关联业务单: ${orderNumber}`)
+  console.log('跳转到关联业务单详情页:', orderNumber)
+}
+
+onMounted(() => {
+  fetchData()
+})
+</script>
+
+<style scoped>
+.operation-cell {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+}
+</style>
+.refund-order-list {
+  padding: 20px;
+}
+
+.search-card {
+  margin-bottom: 20px;
+}
+
+.table-card {
+  min-height: 500px;
+}
+
+.pagination {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.detail-content {
+  padding: 20px 0;
+}
+</style>
