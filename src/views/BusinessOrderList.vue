@@ -500,7 +500,7 @@ const getBusinessLineText = (line) => {
     'crypto_withdrawal': '数币提现'
   }
   return map[line] || line
-}
+ }
 
 // 业务线标签类型映射
 const getBusinessLineType = (line) => {
