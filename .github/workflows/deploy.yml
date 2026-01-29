@@ -28,4 +28,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           # 关键：设置正确的 base 路径
-          cname: transaction.github.io
+          # cname: transaction.github.io
